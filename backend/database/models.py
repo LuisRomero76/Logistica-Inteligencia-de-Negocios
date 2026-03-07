@@ -1,26 +1,3 @@
-"""
-database/models.py
-──────────────────
-Esquema en Estrella (Star Schema) modelado con SQLAlchemy 2.0.
-
-Dimensiones (entidades de contexto):
-  • DimVehiculos   → datos de la flota de transporte
-  • DimConductores → perfil de cada chofer
-  • DimRutas       → tramos origen-destino con distancia
-  • DimClima       → condición meteorológica al momento de la entrega
-
-Tabla de Hechos (eventos medibles):
-  • FactEntregas → cada registro de envío realizado, con su retraso real
-                   vinculado a las 4 dimensiones mediante foreign keys.
-
-  Diagrama simplificado:
-        DimVehiculos ──┐
-        DimConductores─┤
-                       ├──► FactEntregas
-        DimRutas ──────┤
-        DimClima ──────┘
-"""
-
 from __future__ import annotations
 
 import datetime
@@ -39,24 +16,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.config import Base
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  DIMENSIONES
-# ═══════════════════════════════════════════════════════════════════
-
 class DimVehiculos(Base):
-    """
-    Dimensión: flota de vehículos de distribución.
-    Atributos analíticos: antigüedad (influye en averías y retrasos)
-    y capacidad de carga.
-    """
     __tablename__ = "dim_vehiculos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     marca: Mapped[str] = mapped_column(String(50), nullable=False)
-    anio: Mapped[int] = mapped_column(Integer, nullable=False)          # año de fabricación
-    capacidad_kg: Mapped[float] = mapped_column(Float, nullable=False)  # tonelaje máximo
+    anio: Mapped[int] = mapped_column(Integer, nullable=False)
+    capacidad_kg: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # Relación uno-a-muchos hacia la tabla de hechos
     entregas: Mapped[List["FactEntregas"]] = relationship(
         "FactEntregas", back_populates="vehiculo"
     )
@@ -66,17 +33,12 @@ class DimVehiculos(Base):
 
 
 class DimConductores(Base):
-    """
-    Dimensión: conductores de la flota.
-    Atributos analíticos: la experiencia y calificación impactan
-    directamente en la probabilidad de retraso.
-    """
     __tablename__ = "dim_conductores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
-    experiencia_anios: Mapped[int] = mapped_column(Integer, nullable=False)  # años conduciendo
-    calificacion: Mapped[float] = mapped_column(Float, nullable=False)       # escala 1.0 – 5.0
+    experiencia_anios: Mapped[int] = mapped_column(Integer, nullable=False)
+    calificacion: Mapped[float] = mapped_column(Float, nullable=False)
 
     entregas: Mapped[List["FactEntregas"]] = relationship(
         "FactEntregas", back_populates="conductor"
@@ -87,11 +49,6 @@ class DimConductores(Base):
 
 
 class DimRutas(Base):
-    """
-    Dimensión: tramos de distribución.
-    La distancia en km es la variable física más directa sobre el tiempo
-    de tránsito y, por ende, sobre el retraso acumulado.
-    """
     __tablename__ = "dim_rutas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -108,16 +65,11 @@ class DimRutas(Base):
 
 
 class DimClima(Base):
-    """
-    Dimensión: condiciones meteorológicas.
-    Condiciones: soleado | lluvioso | nevado | tormentoso.
-    Impacto creciente en minutos_retraso.
-    """
     __tablename__ = "dim_clima"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     condicion: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
-    temp_promedio: Mapped[float] = mapped_column(Float, nullable=False)  # °C
+    temp_promedio: Mapped[float] = mapped_column(Float, nullable=False)
 
     entregas: Mapped[List["FactEntregas"]] = relationship(
         "FactEntregas", back_populates="clima"
@@ -127,25 +79,11 @@ class DimClima(Base):
         return f"<Clima condicion={self.condicion} temp={self.temp_promedio}°C>"
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  TABLA DE HECHOS
-# ═══════════════════════════════════════════════════════════════════
-
 class FactEntregas(Base):
-    """
-    Tabla de Hechos: cada fila representa un envío real (granularidad = 1 entrega).
-
-    Medidas:
-      • minutos_retraso → variable continua objetivo del modelo de ML.
-
-    Todas las claves foráneas apuntan a las dimensiones correspondientes,
-    permitiendo operaciones OLAP eficientes (GROUP BY, agregaciones).
-    """
     __tablename__ = "fact_entregas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    # ── Foreign Keys a las 4 dimensiones ──────────────────────────
     id_vehiculo: Mapped[int] = mapped_column(
         Integer, ForeignKey("dim_vehiculos.id"), nullable=False, index=True
     )
@@ -159,7 +97,6 @@ class FactEntregas(Base):
         Integer, ForeignKey("dim_clima.id"), nullable=False, index=True
     )
 
-    # ── Medidas temporales y el KPI principal ──────────────────────
     fecha_entrega: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=False),
         nullable=False,
@@ -169,7 +106,6 @@ class FactEntregas(Base):
         Float, nullable=False, default=0.0
     )
 
-    # ── Relaciones ORM (lazy load por defecto) ─────────────────────
     vehiculo: Mapped["DimVehiculos"] = relationship(
         "DimVehiculos", back_populates="entregas"
     )

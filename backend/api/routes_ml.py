@@ -1,19 +1,3 @@
-"""
-api/routes_ml.py
-────────────────
-Endpoint REST para inferencia del modelo predictivo.
-
-POST /predict
-  → Recibe las características de una entrega
-  → Devuelve minutos_retraso predichos + nivel de riesgo
-
-Diseño:
-  • El predictor se inicializa de forma lazy (solo en la primera request)
-    para no bloquear el arranque de la API si el .pkl aún no existe.
-  • La validación de entrada la realiza Pydantic automáticamente
-    (rangos, tipos, patrón para condición de clima).
-"""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -25,7 +9,6 @@ from ml.predictor import LogiBrainPredictor
 
 router = APIRouter(tags=["Machine Learning — Predicción"])
 
-# ── Singleton lazy del predictor ────────────────────────────────
 _predictor: LogiBrainPredictor | None = None
 
 
@@ -36,13 +19,7 @@ def _get_predictor() -> LogiBrainPredictor:
     return _predictor
 
 
-# ─────────────────────────────────────────────────────────────────
-#  Schemas Pydantic
-# ─────────────────────────────────────────────────────────────────
-
 class PredictRequest(BaseModel):
-    """Características necesarias para predecir el retraso de una entrega."""
-
     distancia_km: float = Field(
         ..., gt=0, le=5_000,
         description="Distancia de la ruta en kilómetros.",
@@ -102,10 +79,6 @@ class PredictResponse(BaseModel):
     mensaje: str = Field(description="Mensaje interpretativo para el usuario final.")
 
 
-# ─────────────────────────────────────────────────────────────────
-#  Endpoint
-# ─────────────────────────────────────────────────────────────────
-
 @router.post(
     "/predict",
     response_model=PredictResponse,
@@ -113,11 +86,6 @@ class PredictResponse(BaseModel):
     response_description="Retraso estimado en minutos con nivel de riesgo.",
 )
 async def predict_delay(request: PredictRequest) -> PredictResponse:
-    """
-    Utiliza el modelo RandomForest serializado para estimar cuántos minutos
-    de retraso tendrá una entrega dado su contexto (clima, conductor, ruta,
-    vehículo).
-    """
     try:
         predictor = _get_predictor()
     except FileNotFoundError as exc:
@@ -139,7 +107,6 @@ async def predict_delay(request: PredictRequest) -> PredictResponse:
             detail=f"Error durante la inferencia: {exc}",
         )
 
-    # ── Clasificación de riesgo ────────────────────────────────────
     if minutos < 15:
         nivel = "BAJO"
         emoji = "🟢"
@@ -150,13 +117,8 @@ async def predict_delay(request: PredictRequest) -> PredictResponse:
         nivel = "ALTO"
         emoji = "🔴"
 
-    mensaje = (
-        f"{emoji} Se estiman {minutos:.1f} min de retraso. "
-        f"Nivel de riesgo: {nivel}."
-    )
-
     return PredictResponse(
         minutos_retraso_predicho=minutos,
         nivel_riesgo=nivel,
-        mensaje=mensaje,
+        mensaje=f"{emoji} {nivel}: {minutos:.1f} minutos de retraso esperados.",
     )

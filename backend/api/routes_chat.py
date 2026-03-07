@@ -1,20 +1,3 @@
-"""
-api/routes_chat.py
-──────────────────
-Endpoint REST para el agente conversacional Text-to-SQL.
-
-POST /chat
-  → Recibe una pregunta en lenguaje natural (español)
-  → El agente LangChain traduce la pregunta a SQL, la ejecuta contra
-     el Data Warehouse y devuelve una respuesta en lenguaje natural.
-
-Diseño:
-  • El agente se inicializa de forma lazy para no bloquear el arranque
-    si la clave de API aún no está configurada.
-  • Cuando la GROQ_API_KEY no está disponible, se devuelve HTTP 503
-    con un mensaje claro en lugar de un crash silencioso.
-"""
-
 from __future__ import annotations
 
 import traceback
@@ -26,7 +9,6 @@ from ai_agent.sql_assistant import LogiBrainSQLAssistant
 
 router = APIRouter(tags=["AI Asistente — Text-to-SQL"])
 
-# ── Singleton lazy del asistente ────────────────────────────────
 _assistant: LogiBrainSQLAssistant | None = None
 
 
@@ -36,10 +18,6 @@ def _get_assistant() -> LogiBrainSQLAssistant:
         _assistant = LogiBrainSQLAssistant()
     return _assistant
 
-
-# ─────────────────────────────────────────────────────────────────
-#  Schemas Pydantic
-# ─────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     pregunta: str = Field(
@@ -66,10 +44,6 @@ class ChatResponse(BaseModel):
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-#  Endpoint
-# ─────────────────────────────────────────────────────────────────
-
 @router.post(
     "/chat",
     response_model=ChatResponse,
@@ -77,20 +51,9 @@ class ChatResponse(BaseModel):
     response_description="Respuesta del agente Text-to-SQL.",
 )
 async def chat_with_data(request: ChatRequest) -> ChatResponse:
-    """
-    Envía una pregunta en español al agente LogiBrain.
-    El agente utiliza LangChain para:
-      1. Interpretar la intención de la pregunta.
-      2. Generar la consulta SQL adecuada contra el Data Warehouse.
-      3. Ejecutar la consulta y formular una respuesta en lenguaje natural.
-
-    > **Nota**: Requiere que `GROQ_API_KEY` esté definida en el archivo `.env`.
-    > Obtén tu clave gratuita en https://console.groq.com
-    """
     try:
         assistant = _get_assistant()
     except Exception as exc:
-        # Captura el traceback completo para facilitar el diagnóstico
         tb = traceback.format_exc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

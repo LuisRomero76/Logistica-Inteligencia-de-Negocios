@@ -1,19 +1,3 @@
-"""
-scripts/inspect_model.py
-────────────────────────
-Utilidad para inspeccionar y visualizar el modelo serializado logibrain_model.pkl.
-
-Muestra:
-  • Parámetros del RandomForestRegressor
-  • Importancia de cada variable (feature importance)
-  • Estadísticas de los árboles del bosque
-  • Una predicción de ejemplo
-
-Uso:
-  cd backend
-  python scripts/inspect_model.py
-"""
-
 from __future__ import annotations
 
 import os
@@ -43,7 +27,6 @@ def main() -> None:
     print("  LogiBrain — Inspección del modelo logibrain_model.pkl")
     print("═" * 60)
 
-    # ── Carga ──────────────────────────────────────────────────────
     if not os.path.exists(MODEL_PATH):
         print(f"\n❌ Modelo no encontrado en: {MODEL_PATH}")
         print("   Ejecuta primero:  python ml/train_model.py")
@@ -52,7 +35,6 @@ def main() -> None:
     pipeline = joblib.load(MODEL_PATH)
     rf_model = pipeline.named_steps["model"]
 
-    # ── Info general ───────────────────────────────────────────────
     print(f"\n📦 Archivo:       {os.path.abspath(MODEL_PATH)}")
     print(f"   Tamaño:        {os.path.getsize(MODEL_PATH) / 1024:.1f} KB")
     print(f"   Tipo:          {type(rf_model).__name__}")
@@ -64,14 +46,12 @@ def main() -> None:
     print(f"   random_state:    {rf_model.random_state}")
     print(f"   n_jobs:          {rf_model.n_jobs}")
 
-    # ── Estadísticas de los árboles ────────────────────────────────
     depths = [estimator.get_depth() for estimator in rf_model.estimators_]
     leaves = [estimator.get_n_leaves() for estimator in rf_model.estimators_]
     print(f"\n🌲 Estadísticas del bosque ({rf_model.n_estimators} árboles):")
     print(f"   Profundidad media:  {np.mean(depths):.1f}  (min {min(depths)}, max {max(depths)})")
     print(f"   Hojas promedio:     {np.mean(leaves):.0f}  (min {min(leaves)}, max {max(leaves)})")
 
-    # ── Feature Importances ────────────────────────────────────────
     importances = rf_model.feature_importances_
     fi = pd.DataFrame({"feature": FEATURE_NAMES, "importance": importances})
     fi = fi.sort_values("importance", ascending=False).reset_index(drop=True)
@@ -83,7 +63,6 @@ def main() -> None:
         bar = "█" * int(row["importance"] * 50)
         print(f"   {row['feature']:<25} {row['importance']:>10.4f}   {bar}")
 
-    # ── Predicciones de ejemplo ────────────────────────────────────
     print("\n🔮 Predicciones de ejemplo:")
     ejemplos = [
         {

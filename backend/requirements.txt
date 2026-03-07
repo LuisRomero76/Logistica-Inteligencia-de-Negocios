@@ -1,35 +1,16 @@
-# ─────────────────────────────────────────────────────────────────
-#  LogiBrain — Dependencias del backend
-#  Python 3.10+
-# ─────────────────────────────────────────────────────────────────
-
-# ── API ──────────────────────────────────────────────────────────
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 python-multipart==0.0.9
-
-# ── Persistencia ─────────────────────────────────────────────────
 sqlalchemy==2.0.30
 psycopg2-binary==2.9.9
-
-# ── Data Engineering / ETL ───────────────────────────────────────
 pandas==2.2.2
 numpy==1.26.4
 faker==24.11.0
-
-# ── Machine Learning ─────────────────────────────────────────────
 scikit-learn==1.4.2
 joblib==1.4.2
-
-# ── IA Generativa / LangChain ────────────────────────────────────
 langchain==0.2.5
 langchain-community==0.2.5
 langchain-groq==0.1.9
-# Alternativas:
-#   pip install langchain-openai==0.1.13      (OpenAI)
-#   pip install langchain-google-genai==1.0.7 (Gemini)
-
-# ── Utilidades ───────────────────────────────────────────────────
 python-dotenv==1.0.1
-pydantic==2.7.3certifi>=2024.2.2   # SSL certificates — necesario en entornos Anaconda/Windows
-httpx>=0.27.0       # Cliente HTTP para Groq con soporte SSL configurable
+pydantic==2.7.3certifi>=2024.2.2
+httpx>=0.27.0
